@@ -5,10 +5,13 @@
  */
 
 package brokerserver;
-import brokerserver.utility.*;
-import java.sql.*;
-import java.util.Calendar;
-import otc.entity.ResultInfo;
+
+import java.io.IOException;
+import org.apache.xmlrpc.XmlRpcException;
+import org.apache.xmlrpc.server.PropertyHandlerMapping;
+import org.apache.xmlrpc.server.XmlRpcServer;
+import org.apache.xmlrpc.server.XmlRpcServerConfigImpl;
+import org.apache.xmlrpc.webserver.WebServer;
 
 /**
  *
@@ -16,76 +19,32 @@ import otc.entity.ResultInfo;
  */
 public class BrokerServer 
 {
-    public String hello(String name)
+    private WebServer server;
+    
+    public BrokerServer(int port) 
+           throws XmlRpcException
     {
-        System.out.println("method hello is called...");
-        return "hello " + name;
+        server = new WebServer(port);
+        XmlRpcServer xmlRpcServer = server.getXmlRpcServer();
+        PropertyHandlerMapping phm = new PropertyHandlerMapping();
+        phm.addHandler("otc", BrokerServerHandler.class);
+        XmlRpcServerConfigImpl config = new XmlRpcServerConfigImpl();
+        config.setEnabledForExtensions(true);
+        xmlRpcServer.setHandlerMapping(phm);
+        xmlRpcServer.setConfig(config);
     }
     
-    public ResultInfo sell(
-        String traderName, //trader服务器的名字
-        String name, //商品名字
-        String comment, //商品描述
-        int count, //商品数量
-        boolean vip //是否设置为vip可见
-    )
+    public BrokerServer() 
+           throws XmlRpcException
     {
-        try
-        {
-            System.out.println("method sell is called...");
-            long timestamp = Calendar.getInstance().getTimeInMillis();
-            Connection conn = DBConn.getDbConn();
-            String sql 
-              = "INSERT INTO good (trader_name, name, comment, count, status, vip, time) VALUES (?,?,?,?,1,?,?)";
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            stmt.setString(1, traderName);
-            stmt.setString(2, name);
-            stmt.setString(3, comment);
-            stmt.setInt(4, count);
-            stmt.setInt(5, vip? 1: 0);
-            stmt.setLong(6, timestamp);
-            stmt.executeUpdate();
-            return new ResultInfo(0, "成功");
-        }
-        catch(SQLException sqlex)
-        {
-            String errmsg = "数据库错误：" + sqlex.getMessage();
-            return new ResultInfo(1024 + sqlex.getErrorCode(), errmsg);
-        }
-        catch(Exception ex)
-        {
-            return new ResultInfo(1, ex.getMessage());
-        }
+        this(80);
     }
     
-    public ResultInfo regTrader(
-        String traderName, //trader服务器的名字
-        String host, //主机域名或者ip
-        int port, //端口号
-        String appName //应用名称
-    )
+    public void start() 
+           throws IOException
     {
-        try
-        {
-            System.out.println("method regTrader is called...");
-            Connection conn = DBConn.getDbConn();
-            String sql = "REPLACE INTO trader VALUES (?,?,?,?)";
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            stmt.setString(1, traderName);
-            stmt.setString(2, host);
-            stmt.setInt(3, port);
-            stmt.setString(4, appName);
-            stmt.executeUpdate();
-            return new ResultInfo(0, "成功");
-        }
-        catch(SQLException sqlex)
-        {
-            String errmsg = "数据库错误：" + sqlex.getMessage();
-            return new ResultInfo(1024 + sqlex.getErrorCode(), errmsg);
-        }
-        catch(Exception ex)
-        {
-            return new ResultInfo(1, ex.getMessage());
-        }
+        server.start();
     }
+    
+    
 }

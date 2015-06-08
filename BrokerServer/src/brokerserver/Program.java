@@ -6,10 +6,6 @@
 
 package brokerserver;
 
-import org.apache.xmlrpc.webserver.*;
-import org.apache.xmlrpc.server.*;
-import java.util.*;
-
 /**
  *
  * @author Wizard
@@ -25,14 +21,8 @@ public class Program {
         {
             System.out.println("Attempting to start XML-RPC Server...");
 
-            WebServer server = new WebServer(8089);
-            XmlRpcServer xmlRpcServer = server.getXmlRpcServer();
-            PropertyHandlerMapping phm = new PropertyHandlerMapping();
-            phm.addHandler("otc", BrokerServer.class);
-            XmlRpcServerConfigImpl config = new XmlRpcServerConfigImpl();
-            config.setEnabledForExtensions(true);
-            xmlRpcServer.setHandlerMapping(phm);
-            xmlRpcServer.setConfig(config);
+            int port = args.length == 0? 8089: Integer.parseInt(args[0]);
+            BrokerServer server = new  BrokerServer(port);
             server.start();
 
             System.out.println("Started successfully.");
