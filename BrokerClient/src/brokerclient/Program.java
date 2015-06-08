@@ -21,7 +21,7 @@ public class Program {
     {
         try
         {
-            ResultInfo result = BrokerClient.sell("", "", "", 0, false);
+            ResultInfo result = BrokerClient.sell("test", "test", "test", 100, false);
             System.out.println(result.getErrno() + " " + result.getErrmsg());  
         }
         catch(Exception ex)

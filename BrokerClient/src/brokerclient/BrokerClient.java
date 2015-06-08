@@ -50,4 +50,15 @@ public class BrokerClient
         return (ResultInfo) getConn().execute("otc.sell", params); 
     }
     
+    public static ResultInfo regTrader(
+        String traderName, //trader服务器的名字
+        String host, //主机域名或者ip
+        int port, //端口号
+        String appName //应用名称
+    ) throws MalformedURLException, XmlRpcException
+    {
+        Object[] params = new Object[]{traderName, host, port, appName};
+        return (ResultInfo) getConn().execute("otc.regTrader", params); 
+    }
+    
 }
