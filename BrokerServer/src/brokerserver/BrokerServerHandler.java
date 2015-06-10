@@ -5,10 +5,7 @@
  */
 
 package brokerserver;
-import otc.entity.ResultInfo;
-import otc.entity.Good;
-import otc.entity.History;
-import otc.entity.QueryResultInfo;
+import otc.entity.*;
 import brokerserver.utility.*;
 import java.sql.*;
 import java.util.*;
@@ -25,7 +22,7 @@ public class BrokerServerHandler
         return "hello " + name;
     }
     
-    public ResultInfo sell(
+    public IdResultInfo sell(
         String traderName, //trader服务器的名字
         String userName, //卖家名字
         String name, //商品名字
@@ -44,7 +41,8 @@ public class BrokerServerHandler
               = "INSERT INTO good " + 
                 "(trader_name, user_name, name, comment, count, price, status, vip, time) " + 
                 "VALUES (?,?,?,?,?,?,1,?,?)";
-            PreparedStatement stmt = conn.prepareStatement(sql);
+            PreparedStatement stmt 
+              = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             stmt.setString(1, traderName);
             stmt.setString(2, userName);
             stmt.setString(3, name);
@@ -54,16 +52,19 @@ public class BrokerServerHandler
             stmt.setInt(7, vip? 1: 0);
             stmt.setLong(8, timestamp);
             stmt.executeUpdate();
-            return new ResultInfo(0, "成功");
+            ResultSet rs = stmt.getGeneratedKeys();
+            rs.next();
+            int id = rs.getInt(1);
+            return new IdResultInfo(0, "成功", id);
         }
         catch(SQLException sqlex)
         {
             String errmsg = "数据库错误：" + sqlex.getMessage();
-            return new ResultInfo(1024 + sqlex.getErrorCode(), errmsg);
+            return new IdResultInfo(1024 + sqlex.getErrorCode(), errmsg, 0);
         }
         catch(Exception ex)
         {
-            return new ResultInfo(1, ex.getMessage());
+            return new IdResultInfo(1, ex.getMessage(), 0);
         }
     }
     

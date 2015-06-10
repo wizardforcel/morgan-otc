@@ -10,9 +10,7 @@ import otc.entity.ResultInfo;
 import org.apache.xmlrpc.client.*;
 import java.net.*;
 import org.apache.xmlrpc.XmlRpcException;
-import otc.entity.Good;
-import otc.entity.History;
-import otc.entity.QueryResultInfo;
+import otc.entity.*;
 
 /**
  *
@@ -63,7 +61,7 @@ public class OtcClient
         return (String) getConn().execute("otc.hello", params); 
     }
     
-    public ResultInfo sell(
+    public IdResultInfo sell(
         String traderName, //trader服务器的名字
         String userName, //卖家名字
         String name, //商品名字
@@ -75,7 +73,7 @@ public class OtcClient
     {
         Object[] params 
           = new Object[]{traderName, userName, name, comment, count, price, vip};
-        return (ResultInfo) getConn().execute("otc.sell", params); 
+        return (IdResultInfo) getConn().execute("otc.sell", params); 
     }
     
     public ResultInfo regTrader(
