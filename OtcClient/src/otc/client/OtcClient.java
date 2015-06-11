@@ -102,7 +102,42 @@ public class OtcClient
     public QueryResultInfo<History> history()
            throws MalformedURLException, XmlRpcException
     {
-        return (QueryResultInfo<History>) getConn().execute("otc.history", new Object[0]);
+        Object[] params = new Object[]{0, null, null};
+        return (QueryResultInfo<History>) getConn().execute("otc.history", params);
+    }
+    
+    public QueryResultInfo<History> history(
+        int id,
+        User seller,
+        User buyer
+    ) throws MalformedURLException, XmlRpcException
+    {
+        Object[] params = new Object[]{id, seller, buyer};
+        return (QueryResultInfo<History>) getConn().execute("otc.history", params);
+    }
+    
+    public QueryResultInfo<History> historyById(
+        int id
+    ) throws MalformedURLException, XmlRpcException
+    {
+        Object[] params = new Object[]{id, null, null};
+        return (QueryResultInfo<History>) getConn().execute("otc.history", params);
+    }
+    
+    public QueryResultInfo<History> historyBySeller(
+        User seller
+    ) throws MalformedURLException, XmlRpcException
+    {
+        Object[] params = new Object[]{0, seller, null};
+        return (QueryResultInfo<History>) getConn().execute("otc.history", params);
+    }
+    
+    public QueryResultInfo<History> historyByBuyer(
+        User buyer
+    ) throws MalformedURLException, XmlRpcException
+    {
+        Object[] params = new Object[]{0, null, buyer};
+        return (QueryResultInfo<History>) getConn().execute("otc.history", params);
     }
     
     public QueryResultInfo<Good> query(
@@ -110,7 +145,38 @@ public class OtcClient
         boolean onSale //如果该选项为false，则不显示在售中之外的商品
     ) throws MalformedURLException, XmlRpcException
     {
-        Object[] params = new Object[]{vip, onSale};
+        Object[] params = new Object[]{vip, onSale, 0, null};
+        return (QueryResultInfo<Good>) getConn().execute("otc.query", params);
+    }
+    
+    public QueryResultInfo<Good> query(
+        boolean vip, //如果该选项为false，则不显示vip可见的商品
+        boolean onSale, //如果该选项为false，则不显示在售中之外的商品
+        int id,
+        User seller
+    ) throws MalformedURLException, XmlRpcException
+    {
+        Object[] params = new Object[]{vip, onSale, id, seller};
+        return (QueryResultInfo<Good>) getConn().execute("otc.query", params);
+    }
+    
+    public QueryResultInfo<Good> queryById(
+        boolean vip, //如果该选项为false，则不显示vip可见的商品
+        boolean onSale, //如果该选项为false，则不显示在售中之外的商品
+        int id
+    ) throws MalformedURLException, XmlRpcException
+    {
+        Object[] params = new Object[]{vip, onSale, id, null};
+        return (QueryResultInfo<Good>) getConn().execute("otc.query", params);
+    }
+    
+        public QueryResultInfo<Good> queryBySeller(
+        boolean vip, //如果该选项为false，则不显示vip可见的商品
+        boolean onSale, //如果该选项为false，则不显示在售中之外的商品
+        User seller
+    ) throws MalformedURLException, XmlRpcException
+    {
+        Object[] params = new Object[]{vip, onSale, 0, seller};
         return (QueryResultInfo<Good>) getConn().execute("otc.query", params);
     }
     

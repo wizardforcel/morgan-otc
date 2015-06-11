@@ -276,9 +276,19 @@ public class BrokerServerHandler
         }
     }
     
-    public QueryResultInfo<Good> query(
+    /*public QueryResultInfo<Good> query(
         boolean vip, //如果该选项为false，则不显示vip可见的商品
         boolean onSale //如果该选项为false，则不显示在售中之外的商品
+    )
+    {
+        return query(vip, onSale, 0, null);
+    }*/
+    
+    public QueryResultInfo<Good> query(
+        boolean vip, //如果该选项为false，则不显示vip可见的商品
+        boolean onSale, //如果该选项为false，则不显示在售中之外的商品
+        int id, //指定商品id，0为全部
+        User seller //指定卖方，null为全部
     )
     {
         try
@@ -286,6 +296,7 @@ public class BrokerServerHandler
             System.out.println("method query is called...");
             Connection conn = DBConn.getDbConn();
             
+            ArrayList<String> params = new ArrayList<>();
             String sql = "SELECT id, trader_name, user_name, name, " + 
                          "comment, count, price, status, vip, time " + 
                          "FROM good WHERE 1=1";
@@ -293,7 +304,20 @@ public class BrokerServerHandler
                 sql += " AND vip=0";
             if(onSale)
                 sql += " AND status=1";
+            if(id != 0)
+            {
+                sql += " AND id=?";
+                params.add(String.valueOf(id));
+            }
+            if(seller != null)
+            {
+                sql += " AND trader_name=? AND user_name=?";
+                params.add(seller.getTraderName());
+                params.add((seller.getUserName()));
+            }
             PreparedStatement stmt = conn.prepareStatement(sql);
+            for(int i = 0; i < params.size(); i++)
+                stmt.setString(i + 1, params.get(i));
             ResultSet rs = stmt.executeQuery();
             
             ArrayList<Good> list = new ArrayList<>();
@@ -327,20 +351,50 @@ public class BrokerServerHandler
         }
     }
     
-    public QueryResultInfo<History> history()
+    /*public QueryResultInfo<History> history()
+    {
+        return history(0, null, null);
+    }*/
+    
+    public QueryResultInfo<History> history(
+        int id, //指定商品id，0为全部
+        User seller, //指定卖方，null为全部
+        User buyer //指定买方，null为全部
+    )
     {
         try   
         {
             System.out.println("method history is called...");
             Connection conn = DBConn.getDbConn();
             
+            ArrayList<String> params = new ArrayList<>();
             String sql = "SELECT history.id, history.trader_name, " + 
                          "history.user_name, history.count, history.price, " + 
                          "history.time, good.id, good.trader_name, good.user_name, " + 
                          "good.name, good.comment, good.count, good.price, " + 
                          "good.status, good.vip, good.time " + 
-                         "FROM good JOIN history ON good.id=history.gid";
+                         "FROM good JOIN history ON good.id=history.gid " +
+                         "WHERE 1=1";
+            if(id != 0)
+            {
+                sql += " AND good.id=?";
+                params.add(String.valueOf(id));
+            }
+            if(seller != null)
+            {
+                sql += " AND good.trader_name=? AND good.user_name=?";
+                params.add(seller.getTraderName());
+                params.add(seller.getUserName());
+            }
+            if(buyer != null)
+            {
+                sql += " AND history.trader_name=? AND history.user_name=?";
+                params.add(buyer.getTraderName());
+                params.add(buyer.getUserName());
+            }
             PreparedStatement stmt = conn.prepareStatement(sql);
+            for(int i = 0; i < params.size(); i++)
+                stmt.setString(i + 1, params.get(i));
             ResultSet rs = stmt.executeQuery();
             
             ArrayList<History> list = new ArrayList<>();

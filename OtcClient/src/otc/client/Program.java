@@ -22,12 +22,12 @@ public class Program {
         try
         {
             OtcClient client = new OtcClient("59.78.56.5", 8089);
-            IdResultInfo result 
+            /*IdResultInfo result 
               = client.sell("test", "test", "test2", "test", 100, 100, false);
-            System.out.println(result.getErrno() + " " + result.getErrmsg() + " " + result.getId());
+            System.out.println(result.getErrno() + " " + result.getErrmsg() + " " + result.getId());*/
             
-            //QueryResultInfo<Good> rs2 = client.query(true, true);
-            //System.out.println(rs2.getList().length);
+            QueryResultInfo<Good> rs2 = client.query(true, true);
+            System.out.println(rs2.getList().length);
             
             //QueryResultInfo<History> rs3 = client.history();
             //System.out.println(rs3.getList().length);
