@@ -17,12 +17,10 @@ public class History implements Serializable
     private static final long serialVersionUID = 1L;
     
     private int id;
-    private Good good;
-    private String trader;
-    private String user;
+    private Order seller;
+    private Order buyer;
     private int count;
-    private int price;
-    private long timestamp;     
+    private long time;
 
     /**
      * @return the id
@@ -39,66 +37,10 @@ public class History implements Serializable
     }
 
     /**
-     * @return the good
-     */
-    public Good getGood() {
-        return good;
-    }
-
-    /**
-     * @return the trader
-     */
-    public String getTrader() {
-        return trader;
-    }
-
-    /**
-     * @return the user
-     */
-    public String getUser() {
-        return user;
-    }
-
-    /**
      * @return the count
      */
     public int getCount() {
         return count;
-    }
-
-    /**
-     * @return the price
-     */
-    public int getPrice() {
-        return price;
-    }
-
-    /**
-     * @return the timestamp
-     */
-    public long getTimestamp() {
-        return timestamp;
-    }
-
-    /**
-     * @param good the good to set
-     */
-    public void setGood(Good good) {
-        this.good = good;
-    }
-
-    /**
-     * @param trader the trader to set
-     */
-    public void setTrader(String trader) {
-        this.trader = trader;
-    }
-
-    /**
-     * @param user the user to set
-     */
-    public void setUser(String user) {
-        this.user = user;
     }
 
     /**
@@ -109,17 +51,45 @@ public class History implements Serializable
     }
 
     /**
-     * @param price the price to set
+     * @return the time
      */
-    public void setPrice(int price) {
-        this.price = price;
+    public long getTime() {
+        return time;
     }
 
     /**
-     * @param timestamp the timestamp to set
+     * @param time the time to set
      */
-    public void setTimestamp(long timestamp) {
-        this.timestamp = timestamp;
+    public void setTime(long time) {
+        this.time = time;
     }
-    
+
+    /**
+     * @return the seller
+     */
+    public Order getSeller() {
+        return seller;
+    }
+
+    /**
+     * @param seller the seller to set
+     */
+    public void setSeller(Order seller) {
+        this.seller = seller;
+    }
+
+    /**
+     * @return the buyer
+     */
+    public Order getBuyer() {
+        return buyer;
+    }
+
+    /**
+     * @param buyer the buyer to set
+     */
+    public void setBuyer(Order buyer) {
+        this.buyer = buyer;
+    }
+
 }

@@ -22,14 +22,12 @@ public class BrokerServerHandler
         return "hello " + name;
     }
     
-    public IdResultInfo sell(
-        String traderName, //trader服务器的名字
-        String userName, //卖家名字
-        String name, //商品名字
-        String comment, //商品描述
-        int count, //商品数量
-        int price, //商品价格
-        boolean vip //是否设置为vip可见
+    public TradeResultInfo sell(
+        String good,
+        String trader,
+        String broker,
+        int count,
+        int price
     )
     {
         try
@@ -37,130 +35,141 @@ public class BrokerServerHandler
             System.out.println("method sell is called...");
             long timestamp = Calendar.getInstance().getTimeInMillis();
             Connection conn = DBConn.getDbConn();
-            String sql 
-              = "INSERT INTO good " + 
-                "(trader_name, user_name, name, comment, count, price, status, vip, time) " + 
-                "VALUES (?,?,?,?,?,?,1,?,?)";
+            
+            //增加卖家信息
+            String sql = "INSERT INTO order_t " + 
+                         "(name, trader, broker, count, price, status, time, type) " + 
+                         "VALUES (?,?,?,?,?,1,?,0)";
             PreparedStatement stmt 
               = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-            stmt.setString(1, traderName);
-            stmt.setString(2, userName);
-            stmt.setString(3, name);
-            stmt.setString(4, comment);
-            stmt.setInt(5, count);
-            stmt.setInt(6, price);
-            stmt.setInt(7, vip? 1: 0);
-            stmt.setLong(8, timestamp);
-            stmt.executeUpdate();
-            ResultSet rs = stmt.getGeneratedKeys();
-            rs.next();
-            int id = rs.getInt(1);
-            return new IdResultInfo(0, "成功", id);
-        }
-        catch(SQLException sqlex)
-        {
-            String errmsg = "数据库错误：" + sqlex.getMessage();
-            return new IdResultInfo(1024 + sqlex.getErrorCode(), errmsg, 0);
-        }
-        catch(Exception ex)
-        {
-            return new IdResultInfo(1, ex.getMessage(), 0);
-        }
-    }
-    
-    public ResultInfo regTrader(
-        String traderName, //trader服务器的名字
-        String host, //主机域名或者ip
-        int port, //端口号
-        String appName //应用名称
-    )
-    {
-        try
-        {
-            System.out.println("method regTrader is called...");
-            Connection conn = DBConn.getDbConn();
-            String sql = "REPLACE INTO trader VALUES (?,?,?,?)";
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            stmt.setString(1, traderName);
-            stmt.setString(2, host);
-            stmt.setInt(3, port);
-            stmt.setString(4, appName);
-            stmt.executeUpdate();
-            return new ResultInfo(0, "成功");
-        }
-        catch(SQLException sqlex)
-        {
-            String errmsg = "数据库错误：" + sqlex.getMessage();
-            return new ResultInfo(1024 + sqlex.getErrorCode(), errmsg);
-        }
-        catch(Exception ex)
-        {
-            return new ResultInfo(1, ex.getMessage());
-        }
-    }
-    
-    public ResultInfo buy(
-        String traderName, //trader服务器的名字
-        String userName, //用户名称
-        int id, //商品id
-        int count, //数量
-        int price //价格
-    )
-    {
-        try
-        {
-            System.out.println("method buy is called...");
-            Connection conn = DBConn.getDbConn();
-            
-            String sql = "SELECT price, count, trader_name, user_name " + 
-                         "FROM good WHERE id=? AND status=1";
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            stmt.setInt(1, id);
-            ResultSet rs = stmt.executeQuery();
-            if(!rs.next())
-            {
-                return new ResultInfo(1, "此商品不存在");
-            }
-            int originPrice = rs.getInt(1);
-            int originCount = rs.getInt(2);
-            String sellerTrader = rs.getString(3);
-            String sellerUser = rs.getString(4);
-            
-            if(originPrice > price)
-            {
-                return new ResultInfo(1, "出价不能低于商品价格");
-            }
-            if(originCount < count)
-            {
-                return new ResultInfo(1, "商品库存不足");
-            }
-            if(traderName.equals(sellerTrader) &&
-               userName.equals(sellerUser))
-            {
-                return new ResultInfo(1, "买方和卖方不能为同一个人");
-            }
-            
-            sql = "UPDATE good SET count=?";
-            if(originCount == count)
-                sql += ", status=2";
-            sql += "WHERE id=?";
-            stmt = conn.prepareStatement(sql);
-            stmt.setInt(1, originCount - count);
-            stmt.setInt(2, id);
-            stmt.executeUpdate();
-            
-            long timestamp = Calendar.getInstance().getTimeInMillis();
-            sql = "INSERT history (gid, trader_name, user_name, count, price, time) " + 
-                   "VALUES (?,?,?,?,?,?)";
-            stmt = conn.prepareStatement(sql);
-            stmt.setInt(1, id);
-            stmt.setString(2, traderName);
-            stmt.setString(3, userName);
+            stmt.setString(1, good);
+            stmt.setString(2, trader);
+            stmt.setString(3, broker);
             stmt.setInt(4, count);
             stmt.setInt(5, price);
             stmt.setLong(6, timestamp);
             stmt.executeUpdate();
+            ResultSet rs = stmt.getGeneratedKeys();
+            rs.next();
+            int sellerId = rs.getInt(1);
             
+            //获取所有匹配的买家
+            sql = "SELECT id, price, count, time " +
+                  "FROM order_t WHERE name=? AND broker=? AND price>=? AND status=1 AND type=1";
+            stmt = conn.prepareStatement(sql);
+            stmt.setString(1, good);
+            stmt.setString(2, broker);
+            stmt.setInt(3, price);
+            rs = stmt.executeQuery();
+            ArrayList<Order> li = new ArrayList<>();
+            while(rs.next())
+            {
+                Order o = new Order();
+                o.setId(rs.getInt(1));
+                o.setPrice(rs.getInt(2));
+                o.setCount(rs.getInt(3));
+                o.setTime(rs.getLong(4));
+                li.add(o);
+            }
+            
+            //筛选最优买家
+            if(li.isEmpty())
+                return new TradeResultInfo(0, "成功", sellerId, null);
+            Collections.sort(li, new Comparator<Order>(){
+                @Override
+                public int compare(Order o1, Order o2) {
+                    if(o1.getPrice() != o2.getPrice())
+                        return o1.getPrice() - o2.getPrice();
+                    else if(o1.getCount() != o2.getCount())
+                        return o1.getCount() - o2.getCount();
+                    else
+                        return (int)(o1.getTime() - o2.getTime());
+                }
+            });
+            Order bestBuyer = li.get(li.size() - 1);
+            
+            //增加成交信息
+            int tradeCount = (count>bestBuyer.getCount())? bestBuyer.getCount(): count;
+            sql = "INSERT INTO history (seller, buyer, count, time)" + 
+                  "VALUES (?,?,?,?)";
+            stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            stmt.setInt(1, sellerId);
+            stmt.setInt(2, bestBuyer.getId());
+            stmt.setInt(3, tradeCount);
+            stmt.setLong(4, timestamp);
+            stmt.executeUpdate();
+            rs = stmt.getGeneratedKeys();
+            rs.next();
+            int historyId = rs.getInt(1);
+            
+            //更新卖家买家信息
+            int sellerStatus;
+            if(bestBuyer.getCount() == count)
+            {
+                sellerStatus = 2;
+                sql = "UPDATE order_t SET status=2 WHERE id IN (?,?)";
+                stmt = conn.prepareStatement(sql);
+                stmt.setInt(1, sellerId);
+                stmt.setInt(2, bestBuyer.getId());
+                stmt.executeUpdate();
+            }
+            else
+            {
+                int smaller = (count>bestBuyer.getCount())? bestBuyer.getId(): sellerId;
+                int bigger = (count>bestBuyer.getCount())? sellerId: bestBuyer.getId();
+                int remain = Math.abs(count - bestBuyer.getCount());
+                sellerStatus = (smaller == sellerId)? 2: 1;
+                sql = "UPDATE order_t SET status=2 WHERE id=?";
+                stmt = conn.prepareStatement(sql);
+                stmt.setInt(1, smaller);
+                stmt.executeUpdate();
+                sql = "UPDATE order_t SET count=? WHERE id=?";
+                stmt = conn.prepareStatement(sql);
+                stmt.setInt(1, remain);
+                stmt.setInt(2, bigger);
+                stmt.executeUpdate();
+            }
+            
+            Order seller = new Order();
+            seller.setId(sellerId);
+            seller.setTrader(trader);
+            seller.setBroker(broker);
+            seller.setPrice(price);
+            seller.setCount(count);
+            seller.setStatus(sellerStatus);
+            seller.setTime(timestamp);
+            seller.setType(OrderType.SELL);
+            
+            History h = new  History();
+            h.setId(historyId);
+            h.setSeller(seller);
+            h.setBuyer(bestBuyer);
+            h.setCount(tradeCount);
+            h.setTime(timestamp);
+            
+            return new TradeResultInfo(0, "成功", sellerId, h);
+        }
+        catch(SQLException sqlex)
+        {
+            String errmsg = "数据库错误：" + sqlex.getMessage();
+            return new TradeResultInfo(1024 + sqlex.getErrorCode(), sqlex.getMessage(), 0, null);
+        }
+        catch(Exception ex)
+        {
+            return new TradeResultInfo(1, ex.getMessage(), 0, null);
+        }
+    }
+    
+    public ResultInfo addBroker(String broker)
+    {
+        try
+        {
+            System.out.println("method addBroker is called...");
+            Connection conn = DBConn.getDbConn();
+            String sql = "INSERT IGNORE INTO broker VALUES (?)";
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setString(1, broker);
+            stmt.executeUpdate();
             return new ResultInfo(0, "成功");
         }
         catch(SQLException sqlex)
@@ -174,9 +183,174 @@ public class BrokerServerHandler
         }
     }
     
+    public QueryResultInfo<String> getBroker()
+    {
+        try
+        {
+            System.out.println("method getBroker is called...");
+            Connection conn = DBConn.getDbConn();
+            
+            String sql = "SELECT * FROM broker";
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(sql);
+            ArrayList<String> li = new ArrayList<>();
+            while(rs.next())
+                li.add(rs.getString(1));
+            rs.close();
+            
+            return new QueryResultInfo<String>(0, "成功", li.toArray(new String[0]));
+        }
+        catch(SQLException sqlex)
+        {
+            String errmsg = "数据库错误：" + sqlex.getMessage();
+            return new QueryResultInfo<String>(1024 + sqlex.getErrorCode(), errmsg, null);
+        }
+        catch(Exception ex)
+        {
+            return new QueryResultInfo<String>(1, ex.getMessage(), null);
+        }
+    }
+    
+    public ResultInfo buy(
+        String good,
+        String trader,
+        String broker,
+        int count,
+        int price
+    )
+    {
+        try
+        {
+            System.out.println("method sell is called...");
+            long timestamp = Calendar.getInstance().getTimeInMillis();
+            Connection conn = DBConn.getDbConn();
+            
+            //增加买家信息
+            String sql = "INSERT INTO order_t " + 
+                         "(name, trader, broker, count, price, status, time, type) " + 
+                         "VALUES (?,?,?,?,?,1,?,1)";
+            PreparedStatement stmt 
+              = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            stmt.setString(1, good);
+            stmt.setString(2, trader);
+            stmt.setString(3, broker);
+            stmt.setInt(4, count);
+            stmt.setInt(5, price);
+            stmt.setLong(6, timestamp);
+            stmt.executeUpdate();
+            ResultSet rs = stmt.getGeneratedKeys();
+            rs.next();
+            int buyerId = rs.getInt(1);
+            
+            //获取所有匹配的卖家
+            sql = "SELECT id, price, count, time " +
+                  "FROM order_t WHERE name=? AND broker=? AND price<=? AND status=1 AND type=0";
+            stmt = conn.prepareStatement(sql);
+            stmt.setString(1, good);
+            stmt.setString(2, broker);
+            stmt.setInt(3, price);
+            rs = stmt.executeQuery();
+            ArrayList<Order> li = new ArrayList<>();
+            while(rs.next())
+            {
+                Order o = new Order();
+                o.setId(rs.getInt(1));
+                o.setPrice(rs.getInt(2));
+                o.setCount(rs.getInt(3));
+                o.setTime(rs.getLong(4));
+                li.add(o);
+            }
+            
+            //筛选最优卖家
+            if(li.isEmpty())
+                return new TradeResultInfo(0, "成功", buyerId, null);
+            Collections.sort(li, new Comparator<Order>(){
+                @Override
+                public int compare(Order o1, Order o2) {
+                    if(o1.getPrice() != o2.getPrice())
+                        return o2.getPrice() - o1.getPrice();
+                    else if(o1.getCount() != o2.getCount())
+                        return o1.getCount() - o2.getCount();
+                    else
+                        return (int)(o1.getTime() - o2.getTime());
+                }
+            });
+            Order bestSeller = li.get(li.size() - 1);
+            
+            //增加成交信息
+            int tradeCount = (count>bestSeller.getCount())? bestSeller.getCount(): count;
+            sql = "INSERT INTO history (seller, buyer, count, time)" + 
+                  "VALUES (?,?,?,?)";
+            stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            stmt.setInt(1, bestSeller.getId());
+            stmt.setInt(2, buyerId);
+            stmt.setInt(3, tradeCount);
+            stmt.setLong(4, timestamp);
+            stmt.executeUpdate();
+            rs = stmt.getGeneratedKeys();
+            rs.next();
+            int historyId = rs.getInt(1);
+            
+            //更新卖家买家信息
+            int buyerStatus;
+            if(bestSeller.getCount() == count)
+            {
+                buyerStatus = 2;
+                sql = "UPDATE order_t SET status=2 WHERE id IN (?,?)";
+                stmt = conn.prepareStatement(sql);
+                stmt.setInt(1, buyerId);
+                stmt.setInt(2, bestSeller.getId());
+                stmt.executeUpdate();
+            }
+            else
+            {
+                int smaller = (count>bestSeller.getCount())? bestSeller.getId(): buyerId;
+                int bigger = (count>bestSeller.getCount())? buyerId: bestSeller.getId();
+                int remain = Math.abs(count - bestSeller.getCount());
+                buyerStatus = (smaller == buyerId)? 2: 1;
+                sql = "UPDATE order_t SET status=2 WHERE id=?";
+                stmt = conn.prepareStatement(sql);
+                stmt.setInt(1, smaller);
+                stmt.executeUpdate();
+                sql = "UPDATE order_t SET count=? WHERE id=?";
+                stmt = conn.prepareStatement(sql);
+                stmt.setInt(1, remain);
+                stmt.setInt(2, bigger);
+                stmt.executeUpdate();
+            }
+            
+            Order buyer = new Order();
+            buyer.setId(buyerId);
+            buyer.setTrader(trader);
+            buyer.setBroker(broker);
+            buyer.setPrice(price);
+            buyer.setCount(count);
+            buyer.setStatus(buyerStatus);
+            buyer.setTime(timestamp);
+            buyer.setType(OrderType.SELL);
+            
+            History h = new  History();
+            h.setId(historyId);
+            h.setSeller(bestSeller);
+            h.setBuyer(buyer);
+            h.setCount(tradeCount);
+            h.setTime(timestamp);
+            
+            return new TradeResultInfo(0, "成功", buyerId, h);
+        }
+        catch(SQLException sqlex)
+        {
+            String errmsg = "数据库错误：" + sqlex.getMessage();
+            return new TradeResultInfo(1024 + sqlex.getErrorCode(), errmsg, -1, null);
+        }
+        catch(Exception ex)
+        {
+            return new TradeResultInfo(1, ex.getMessage(), -1, null);
+        }
+    }
+    
     public ResultInfo cancel(
-        String traderName, //trader服务器的名字
-        String userName, //用户名称
+        String trader, //用户名称
         int id //商品id
     )
     {
@@ -185,24 +359,17 @@ public class BrokerServerHandler
             System.out.println("method cancel is called...");
             Connection conn = DBConn.getDbConn();
             
-            String sql = "SELECT trader_name, user_name " + 
-                         "FROM good WHERE id=? AND status=1";
+            String sql = "SELECT 1 FROM order_t WHERE id=? AND status=1 AND trader=?";
             PreparedStatement stmt = conn.prepareStatement(sql);
             stmt.setInt(1, id);
+            stmt.setString(2, trader);
             ResultSet rs = stmt.executeQuery();
             if(!rs.next())
             {
-                return new ResultInfo(1, "此商品不存在");
-            }
-            String sellerTrader = rs.getString(1);
-            String sellerUser = rs.getString(2);
-            if(!traderName.equals(sellerTrader) ||
-               !userName.equals(sellerUser))
-            {
-                return new ResultInfo(1, "不可以取消别人的商品");
+                return new ResultInfo(1, "此记录不存在");
             }
             
-            sql = "UPDATE good SET status=3 WHERE id=?";
+            sql = "UPDATE order_t SET status=3 WHERE id=?";
             stmt = conn.prepareStatement(sql);
             stmt.setInt(1, id);
             stmt.executeUpdate();
@@ -220,15 +387,11 @@ public class BrokerServerHandler
         }
     }
     
-    public ResultInfo modify(
-        String traderName, //trader服务器的名字
-        String userName, //用户名称
+    /*public ResultInfo modify(
+        String trader, //trader服务器的名字
         int id, //商品id      
-        String name,
-        String comment,
         int count,
-        int price,
-        boolean vip
+        int price
     )
     {
         try
@@ -236,31 +399,21 @@ public class BrokerServerHandler
             System.out.println("method modify is called...");
             Connection conn = DBConn.getDbConn();
             
-            String sql = "SELECT trader_name, user_name " + 
-                         "FROM good WHERE id=? AND status=1";
+            String sql = "SELECT 1 FROM good WHERE id=? AND status=1 AND trader=?";
             PreparedStatement stmt = conn.prepareStatement(sql);
             stmt.setInt(1, id);
+            stmt.setString(2, trader);
             ResultSet rs = stmt.executeQuery();
             if(!rs.next())
             {
-                return new ResultInfo(1, "此商品不存在");
-            }
-            String sellerTrader = rs.getString(1);
-            String sellerUser = rs.getString(2);
-            if(!traderName.equals(sellerTrader) ||
-               !userName.equals(sellerUser))
-            {
-                return new ResultInfo(1, "不可以编辑别人的商品");
+                return new ResultInfo(1, "此记录不存在");
             }
             
-            sql = "UPDATE good SET name=?, comment=?, count=?, price=?, vip=? WHERE id=?";
+            sql = "UPDATE good SET count=?, price=?, WHERE id=?";
             stmt = conn.prepareStatement(sql);
-            stmt.setString(1, name);
-            stmt.setString(2, comment);
-            stmt.setInt(3, count);
-            stmt.setInt(4, price);
-            stmt.setInt(5, vip? 1: 0);
-            stmt.setInt(6, id);
+            stmt.setInt(1, count);
+            stmt.setInt(2, price);
+            stmt.setInt(3, id);
             stmt.executeUpdate();
             
             return new ResultInfo(0, "成功");
@@ -274,92 +427,91 @@ public class BrokerServerHandler
         {
             return new ResultInfo(1, ex.getMessage());
         }
-    }
-    
-    /*public QueryResultInfo<Good> query(
-        boolean vip, //如果该选项为false，则不显示vip可见的商品
-        boolean onSale //如果该选项为false，则不显示在售中之外的商品
-    )
-    {
-        return query(vip, onSale, 0, null);
     }*/
+   
     
-    public QueryResultInfo<Good> query(
-        boolean vip, //如果该选项为false，则不显示vip可见的商品
-        boolean onSale, //如果该选项为false，则不显示在售中之外的商品
-        int id, //指定商品id，0为全部
-        User seller //指定卖方，null为全部
+    public QueryResultInfo<Order> order(
+        String good,
+        String trader,
+        String broker,
+        int status,
+        int type
     )
     {
         try
         {
-            System.out.println("method query is called...");
+            System.out.println("method order is called...");
             Connection conn = DBConn.getDbConn();
             
             ArrayList<String> params = new ArrayList<>();
-            String sql = "SELECT id, trader_name, user_name, name, " + 
-                         "comment, count, price, status, vip, time " + 
-                         "FROM good WHERE 1=1";
-            if(!vip)
-                sql += " AND vip=0";
-            if(onSale)
-                sql += " AND status=1";
-            if(id != 0)
+            String sql = "SELECT id, name, trader, broker, " + 
+                         "count, price, status, time, type " + 
+                         "FROM order_t WHERE 1=1";
+            if(good != null)
             {
-                sql += " AND id=?";
-                params.add(String.valueOf(id));
+                sql += " AND name=?";
+                params.add(good);
             }
-            if(seller != null)
+            if(trader != null)
             {
-                sql += " AND trader_name=? AND user_name=?";
-                params.add(seller.getTraderName());
-                params.add((seller.getUserName()));
+                sql += " AND trader=?";
+                params.add(trader);
+            }
+            if(broker != null)
+            {
+                sql += " AND broker=?";
+                params.add(broker);
+            }
+            if(status != OrderStatus.ALL)
+            {
+                sql += " AND status=?";
+                params.add(String.valueOf(status));
+            }
+            if(type != OrderType.ALL)
+            {
+                sql += " AND type=?";
+                params.add(String.valueOf(type));
             }
             PreparedStatement stmt = conn.prepareStatement(sql);
             for(int i = 0; i < params.size(); i++)
                 stmt.setString(i + 1, params.get(i));
             ResultSet rs = stmt.executeQuery();
             
-            ArrayList<Good> list = new ArrayList<>();
+            ArrayList<Order> list = new ArrayList<>();
             while(rs.next())
             {
-                Good g = new Good();
-                g.setId(rs.getInt(1));
-                g.setTrader(rs.getString(2));
-                g.setUser(rs.getString(3));
-                g.setName(rs.getString(4));
-                g.setComment(rs.getString(5));
-                g.setCount(rs.getInt(6));
-                g.setPrice(rs.getInt(7));
-                g.setStatus(rs.getInt(8));
-                g.setVip(rs.getInt(9) != 0);
-                g.setTimestamp(rs.getLong(10));
-                list.add(g);
+                Order o = new Order();
+                o.setId(rs.getInt(1));
+                o.setName(rs.getString(2));
+                o.setTrader(rs.getString(3));
+                o.setBroker(rs.getString(4));
+                o.setCount(rs.getInt(5));
+                o.setPrice(rs.getInt(6));
+                o.setStatus(rs.getInt(7));
+                o.setTime(rs.getLong(8));
+                o.setType(rs.getInt(9));
+                list.add(o);
             }
             rs.close();
             
-            return new QueryResultInfo<Good>(0, "成功", list.toArray(new Good[0]));
+            return new QueryResultInfo<Order>(0, "成功", list.toArray(new Order[0]));
         }
         catch(SQLException sqlex)
         {
             String errmsg = "数据库错误：" + sqlex.getMessage();
-            return new QueryResultInfo<Good>(1024 + sqlex.getErrorCode(), errmsg, null);
+            return new QueryResultInfo<Order>(1024 + sqlex.getErrorCode(), errmsg, null);
         }
         catch(Exception ex)
         {
-            return new QueryResultInfo<Good>(1, ex.getMessage(), null);
+            return new QueryResultInfo<Order>(1, ex.getMessage(), null);
         }
     }
-    
-    /*public QueryResultInfo<History> history()
-    {
-        return history(0, null, null);
-    }*/
-    
+        
     public QueryResultInfo<History> history(
-        int id, //指定商品id，0为全部
-        User seller, //指定卖方，null为全部
-        User buyer //指定买方，null为全部
+        String good,
+        String broker,
+        String seller,
+        String buyer
     )
     {
         try   
@@ -368,29 +520,34 @@ public class BrokerServerHandler
             Connection conn = DBConn.getDbConn();
             
             ArrayList<String> params = new ArrayList<>();
-            String sql = "SELECT history.id, history.trader_name, " + 
-                         "history.user_name, history.count, history.price, " + 
-                         "history.time, good.id, good.trader_name, good.user_name, " + 
-                         "good.name, good.comment, good.count, good.price, " + 
-                         "good.status, good.vip, good.time " + 
-                         "FROM good JOIN history ON good.id=history.gid " +
+            String sql = "SELECT history.id, history.count, " + 
+                         "history.time, so.id, so.name, so.trader " + 
+                         "so.broker, so.count, so.price, so.status, " + 
+                         "so.time, bo.id, bo.trader, bo.count, bo.price, " + 
+                         "bo.status, bo.time " + 
+                         "FROM history " + 
+                         "JOIN order_t AS so ON history.seller=so.id " + 
+                         "JOIN order_t AS bo ON history.buyer=bo.id " +
                          "WHERE 1=1";
-            if(id != 0)
+            if(good != null)
             {
-                sql += " AND good.id=?";
-                params.add(String.valueOf(id));
+                sql += " AND so.name=?";
+                params.add(good);
             }
             if(seller != null)
             {
-                sql += " AND good.trader_name=? AND good.user_name=?";
-                params.add(seller.getTraderName());
-                params.add(seller.getUserName());
+                sql += " AND so.trader=?";
+                params.add(seller);
             }
             if(buyer != null)
             {
-                sql += " AND history.trader_name=? AND history.user_name=?";
-                params.add(buyer.getTraderName());
-                params.add(buyer.getUserName());
+                sql += " AND bo.trader=?";
+                params.add(buyer);
+            }
+            if(broker != null)
+            {
+                sql += " AND so.broker=?";
+                params.add(broker); 
             }
             PreparedStatement stmt = conn.prepareStatement(sql);
             for(int i = 0; i < params.size(); i++)
@@ -400,26 +557,36 @@ public class BrokerServerHandler
             ArrayList<History> list = new ArrayList<>();
             while(rs.next())
             {
+                Order so = new Order();
+                so.setId(rs.getInt(4));
+                so.setName(rs.getString(5));
+                so.setTrader(rs.getString(6));
+                so.setBroker(rs.getString(7));
+                so.setCount(rs.getInt(8));
+                so.setPrice(rs.getInt(9));
+                so.setStatus(rs.getInt(10));
+                so.setTime((rs.getLong(11)));
+                so.setType(OrderType.SELL);
+                
+                Order bo = new Order();
+                bo.setId(rs.getInt(12));
+                bo.setName(rs.getString(5));
+                bo.setTrader(rs.getString(13));
+                bo.setBroker(rs.getString(7));
+                bo.setCount(rs.getInt(14));
+                bo.setPrice(rs.getInt(15));
+                bo.setStatus(rs.getInt(16));
+                bo.setTime(rs.getLong(17));
+                bo.setType(OrderType.BUY);
+                
                 History h = new History();
                 h.setId(rs.getInt(1));
-                h.setTrader(rs.getString(2));
-                h.setUser(rs.getString(3));
-                h.setCount(rs.getInt(4));
-                h.setPrice(rs.getInt(5));
-                h.setTimestamp(rs.getLong(6));
+                h.setSeller(so);
+                h.setBuyer(bo);
+                h.setCount(rs.getInt(2));
+                h.setTime(rs.getLong(3));
                 
-                Good g = new Good();
-                g.setId(rs.getInt(7));
-                g.setTrader(rs.getString(8));
-                g.setUser(rs.getString(9));
-                g.setName(rs.getString(10));
-                g.setComment(rs.getString(11));
-                g.setCount(rs.getInt(12));
-                g.setPrice(rs.getInt(13));
-                g.setStatus(rs.getInt(14));
-                g.setVip(rs.getInt(15) != 0);
-                g.setTimestamp(rs.getLong(16));
-                h.setGood(g);
+                list.add(h);
             }
             rs.close();
             
@@ -433,6 +600,37 @@ public class BrokerServerHandler
         catch(Exception ex)
         {
             return new QueryResultInfo<History>(1, ex.getMessage(), null);
+        }
+    }
+    
+    public PriceResultInfo lastPrice(String good)
+    {
+        try
+        {
+            System.out.println("method lastPrice is called...");
+            Connection conn = DBConn.getDbConn();
+            
+            String sql = "SELECT order_t.price " + 
+                         "FROM history JOIN order_t ON history.buyer=order_t.id " + 
+                         "WHERE order_t.name=? " +
+                         "ORDER BY history.time DESC LIMIT 1";
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setString(1, good);
+            ResultSet rs = stmt.executeQuery();
+            if(!rs.next())
+                return new PriceResultInfo(0, "成功", -1);
+            
+            int price = rs.getInt(1);
+            return new PriceResultInfo(0, "成功", price);
+        }
+        catch(SQLException sqlex)
+        {
+            String errmsg = "数据库错误：" + sqlex.getMessage();
+            return new PriceResultInfo(1024 + sqlex.getErrorCode(), errmsg, -1);
+        }
+        catch(Exception ex)
+        {
+            return new PriceResultInfo(1, ex.getMessage(), -1);
         }
     }
 }

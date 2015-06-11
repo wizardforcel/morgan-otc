@@ -10,30 +10,30 @@ package otc.entity;
  *
  * @author Wizard
  */
-public class IdResultInfo extends ResultInfo
+public class PriceResultInfo extends ResultInfo
 {
     private static final long serialVersionUID = 1L;
     
-    private int id;
+    private int price;
     
-    public IdResultInfo(int errno, String errmsg, int id)
+    public PriceResultInfo(int errno, String errmsg, int price)
     {
         super(errno, errmsg);
-        this.id = id;
+        this.price = price;
     }
 
     /**
      * @return the id
      */
-    public int getId() {
-        return id;
+    public int getPrice() {
+        return price;
     }
 
     /**
      * @param id the id to set
      */
-    public void setId(int id) {
-        this.id = id;
+    public void setPrice(int price) {
+        this.price = price;
     }
     
 }
