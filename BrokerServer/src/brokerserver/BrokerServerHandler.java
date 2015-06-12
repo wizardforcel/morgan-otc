@@ -83,7 +83,7 @@ public class BrokerServerHandler
                     else if(o1.getCount() != o2.getCount())
                         return o1.getCount() - o2.getCount();
                     else
-                        return (int)(o1.getTime() - o2.getTime());
+                        return (int)(o2.getTime() - o1.getTime());
                 }
             });
             Order bestBuyer = li.get(li.size() - 1);
@@ -272,7 +272,7 @@ public class BrokerServerHandler
                     else if(o1.getCount() != o2.getCount())
                         return o1.getCount() - o2.getCount();
                     else
-                        return (int)(o1.getTime() - o2.getTime());
+                        return (int)(o2.getTime() - o1.getTime());
                 }
             });
             Order bestSeller = li.get(li.size() - 1);
@@ -521,7 +521,7 @@ public class BrokerServerHandler
             
             ArrayList<String> params = new ArrayList<>();
             String sql = "SELECT history.id, history.count, " + 
-                         "history.time, so.id, so.name, so.trader " + 
+                         "history.time, so.id, so.name, so.trader, " + 
                          "so.broker, so.count, so.price, so.status, " + 
                          "so.time, bo.id, bo.trader, bo.count, bo.price, " + 
                          "bo.status, bo.time " + 

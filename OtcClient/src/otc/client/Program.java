@@ -22,15 +22,34 @@ public class Program {
         try
         {
             OtcClient client = new OtcClient("59.78.56.5", 8089);
-            /*IdResultInfo result 
-              = client.sell("test", "test", "test2", "test", 100, 100, false);
-            System.out.println(result.getErrno() + " " + result.getErrmsg() + " " + result.getId());*/
             
-            //QueryResultInfo<Good> rs2 = client.query(true, true);
+            /*ResultInfo result 
+              = client.addBroker("broker1");
+            System.out.println(result.getErrno() + " " + result.getErrmsg());*/
+            
+            //QueryResultInfo<String> rs2 = client.getBroker();
             //System.out.println(rs2.getList().length);
             
-            //QueryResultInfo<History> rs3 = client.history();
-            //System.out.println(rs3.getList().length);
+            TradeResultInfo rs3 = client.sell("test4", "trader1", "broker1", 100, 110);
+            System.out.println(rs3.getErrno() + " " + rs3.getErrmsg() + " " + 
+                               rs3.getOrderId() + " " + (rs3.getTradeRecord() == null));
+            
+            //ResultInfo rs4 = client.cancel("trader1", 1);
+            //System.out.println(rs4.getErrno() + " " + rs4.getErrmsg());
+            
+            //QueryResultInfo<Order> rs5 = client.order(null, null, null, OrderStatus.ALL, OrderType.ALL);
+            //System.out.println(rs5.getList().length);
+            
+            /*TradeResultInfo rs6 = client.buy("test4", "trader2", "broker1", 100, 110);
+            System.out.println(rs6.getErrno() + " " + rs6.getErrmsg() + " " + 
+                               rs6.getOrderId() + " " + (rs6.getTradeRecord() == null));*/
+            
+            //QueryResultInfo<History> rs7 = client.history(null, null, null, null);
+            //System.out.println(rs7.getList().length);
+            
+            //PriceResultInfo rs8 = client.lastPrice("abc");
+            //System.out.print(rs8.getPrice());
+            
         }
         catch(Exception ex)
         {
