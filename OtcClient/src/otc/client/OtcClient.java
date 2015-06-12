@@ -61,6 +61,24 @@ public class OtcClient
         return (String) getConn().execute("otc.hello", params); 
     }
     
+    public TradeResultInfo modify(
+        String trader, //trader服务器的名字
+        int id, //商品id      
+        int count,
+        int price
+    ) throws MalformedURLException, XmlRpcException
+    {
+        Object[] params = new Object[]{trader, id, count, price};
+        return (TradeResultInfo) getConn().execute("otc.modify", params);
+    }
+    
+    public QueryResultInfo<Order> orderById(int id)
+           throws MalformedURLException, XmlRpcException
+    {
+        Object[] params = new Object[]{id};
+        return (QueryResultInfo<Order>) getConn().execute("otc.orderById", params);
+    }
+    
     public TradeResultInfo sell(
         String good,
         String trader,
