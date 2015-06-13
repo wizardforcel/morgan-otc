@@ -44,8 +44,8 @@ public class Program {
             System.out.println(rs6.getErrno() + " " + rs6.getErrmsg() + " " + 
                                rs6.getOrderId() + " " + (rs6.getTradeRecord() == null));*/
             
-            //QueryResultInfo<History> rs7 = client.history(null, null, null, null);
-            //System.out.println(rs7.getList().length);
+            QueryResultInfo<History> rs7 = client.history(null, null, null, null);
+            System.out.println(rs7.getList().length);
             
             //PriceResultInfo rs8 = client.lastPrice("abc");
             //System.out.print(rs8.getPrice());
@@ -53,8 +53,8 @@ public class Program {
             //QueryResultInfo<Order> rs9 = client.orderById(1);
             //System.out.println(rs9.getList().length);
             
-            TradeResultInfo rs10 = client.modify("trader2", 4, 10, 200);
-            System.out.println(rs10.getErrno() + " " + rs10.getErrmsg() + " " + rs10.getOrderId());
+            //TradeResultInfo rs10 = client.modify("trader2", 4, 10, 200);
+            //System.out.println(rs10.getErrno() + " " + rs10.getErrmsg() + " " + rs10.getOrderId());
             
         }
         catch(Exception ex)

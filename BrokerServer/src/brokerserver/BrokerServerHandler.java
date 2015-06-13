@@ -16,9 +16,16 @@ import java.util.*;
  */
 public class BrokerServerHandler 
 {
+    private static String timeStr()
+    {
+        Calendar c = Calendar.getInstance();
+        return "[" + c.get(Calendar.HOUR_OF_DAY) + ":" + 
+               c.get(Calendar.MINUTE) + ":" + c.get(Calendar.SECOND) + "] ";
+    }
+    
     public String hello(String name)
     {
-        System.out.println("method hello is called...");
+        System.out.println(timeStr() + "hello(\"" + name + "\")");
         return "hello " + name;
     }
     
@@ -32,7 +39,8 @@ public class BrokerServerHandler
     {
         try
         {
-            System.out.println("method sell is called...");
+            System.out.println(timeStr() + "sell(\"" + good + "\", \"" + trader + 
+                               "\", \"" + broker + "\", " + count + ", " + price + ")");
             long timestamp = Calendar.getInstance().getTimeInMillis();
             Connection conn = DBConn.getDbConn();
             
@@ -164,7 +172,7 @@ public class BrokerServerHandler
     {
         try
         {
-            System.out.println("method addBroker is called...");
+            System.out.println(timeStr() + "addBroker(\"" + broker + "\")");
             Connection conn = DBConn.getDbConn();
             String sql = "INSERT IGNORE INTO broker VALUES (?)";
             PreparedStatement stmt = conn.prepareStatement(sql);
@@ -187,7 +195,7 @@ public class BrokerServerHandler
     {
         try
         {
-            System.out.println("method getBroker is called...");
+            System.out.println(timeStr() + "getBroker()");
             Connection conn = DBConn.getDbConn();
             
             String sql = "SELECT * FROM broker";
@@ -221,7 +229,8 @@ public class BrokerServerHandler
     {
         try
         {
-            System.out.println("method sell is called...");
+            System.out.println(timeStr() + "buy(\"" + good + "\", \"" + trader + 
+                               "\", \"" + broker + "\", " + count + ", " + price + ")");
             long timestamp = Calendar.getInstance().getTimeInMillis();
             Connection conn = DBConn.getDbConn();
             
@@ -356,7 +365,7 @@ public class BrokerServerHandler
     {
         try
         {
-            System.out.println("method cancel is called...");
+            System.out.println(timeStr() + "cancel(\"" + trader + "\", " + id + ")");
             Connection conn = DBConn.getDbConn();
             
             String sql = "SELECT 1 FROM order_t WHERE id=? AND status=1 AND trader=?";
@@ -394,7 +403,8 @@ public class BrokerServerHandler
         int price
     )
     {
-        System.out.println("method modify is called...");
+        System.out.println(timeStr() + "modify(\"" + trader + "\", " + id + ", " + 
+                           count + ", " + price + ")");
 
         QueryResultInfo<Order> rs1 = orderById(id);
         if(rs1.getErrno() != 0)
@@ -420,7 +430,7 @@ public class BrokerServerHandler
     {
         try
         {
-            System.out.println("method orderById is called...");
+            System.out.println(timeStr() + "orderById(" + id + ")");
             Connection conn = DBConn.getDbConn();
             
             String sql = "SELECT id, name, trader, broker, " + 
@@ -470,7 +480,8 @@ public class BrokerServerHandler
     {
         try
         {
-            System.out.println("method order is called...");
+            System.out.println(timeStr() + "order(\"" + good + "\", \"" + trader + 
+                               "\", \"" + broker + "\", " + status + ", " + type + ")");
             Connection conn = DBConn.getDbConn();
             
             ArrayList<String> params = new ArrayList<>();
@@ -546,7 +557,8 @@ public class BrokerServerHandler
     {
         try   
         {
-            System.out.println("method history is called...");
+            System.out.println(timeStr() + "history(\"" + good + "\", \"" + broker + 
+                               "\", \"" + seller + "\", \"" + buyer + "\")");
             Connection conn = DBConn.getDbConn();
             
             ArrayList<String> params = new ArrayList<>();
@@ -637,7 +649,7 @@ public class BrokerServerHandler
     {
         try
         {
-            System.out.println("method lastPrice is called...");
+            System.out.println(timeStr() + "lastPrice(\"" + good + "\")");
             Connection conn = DBConn.getDbConn();
             
             String sql = "SELECT order_t.price " + 
